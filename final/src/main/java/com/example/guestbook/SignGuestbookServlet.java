@@ -16,6 +16,7 @@
 
 //[START all]
 package com.example.guestbook;
+import java.util.List;
 
 import com.google.appengine.api.datastore.DatastoreService;
 import com.google.appengine.api.datastore.DatastoreServiceFactory;
@@ -43,6 +44,9 @@ import com.googlecode.objectify.ObjectifyService;
  * data and saves it.
  */
 public class SignGuestbookServlet extends HttpServlet {
+	
+	public int counter = 0;
+	public Greeting firstGreeting;
 
   // Process the http POST of the form
   @Override
@@ -54,15 +58,38 @@ public class SignGuestbookServlet extends HttpServlet {
 
     String guestbookName = req.getParameter("guestbookName");
     String content = req.getParameter("content");
+    content = "You are awesome! " + content;
     if (user != null) {
       greeting = new Greeting(guestbookName, content, user.getUserId(), user.getEmail());
     } else {
       greeting = new Greeting(guestbookName, content);
     }
+    
+    
+    if(counter >= 5){
+    	// set the counter one back again
+    	counter--;
+    	
+    	List<Greeting> results = ObjectifyService.ofy().load().type(Greeting.class).order("-date").list();
+    	firstGreeting = results.get(results.size() - 1);
+    	ObjectifyService.ofy().delete().entity(firstGreeting);
+    	
+    	//store new object normally
+    	ObjectifyService.ofy().save().entity(greeting).now();
+    	
+    } else if (counter == 0){
+    	
+    	// Use Objectify to save the greeting and now() is used to make the call synchronously as we
+        // will immediately get a new page using redirect and we want the data to be present.
+    	ObjectifyService.ofy().save().entity(greeting).now();
+    } else {
+    	//store new object normally
+    	ObjectifyService.ofy().save().entity(greeting).now();
+    }
 
-    // Use Objectify to save the greeting and now() is used to make the call synchronously as we
-    // will immediately get a new page using redirect and we want the data to be present.
-    ObjectifyService.ofy().save().entity(greeting).now();
+    
+    counter++;
+    //ObjectifyService.ofy().save().entity(greeting).now();
 
     resp.sendRedirect("/guestbook.jsp?guestbookName=" + guestbookName);
   }
